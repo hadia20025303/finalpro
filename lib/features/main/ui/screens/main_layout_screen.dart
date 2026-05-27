@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // ✅ إضافة GetX
+import 'package:get/get.dart';
 import 'package:untitlednew2/core/theme/app_colors.dart';
 import 'package:untitlednew2/core/widgets/main_bottom_navbar.dart';
 
@@ -10,18 +10,25 @@ import '../../../home/ui/screens/add_property_screen.dart';
 import '../../../home/ui/screens/home_screen.dart';
 import '../../../notifications/ui/screen/notifications_screen.dart';
 import '../../../profile/ui/screens/profile_screen.dart';
-// استيراد الكنترولر
 import '../../logic/main_layout_controller.dart';
-
 
 class MainLayoutScreen extends StatelessWidget {
   final String? initialArea;
-  const MainLayoutScreen({super.key, this.initialArea});
+  final int initialIndex; // ✅ 1. أضفنا هذا المتغير لتحديد الصفحة المستهدفة
+
+  const MainLayoutScreen({
+    super.key,
+    this.initialArea,
+    this.initialIndex = 0, // ✅ الافتراضي هو 0 (الهوم)
+  });
 
   @override
   Widget build(BuildContext context) {
-    // ✅ حقن الكنترولر الخاص بالهيكل
+    // حقن الكنترولر الخاص بالهيكل
     final MainLayoutController controller = Get.put(MainLayoutController());
+
+    // ✅ 2. إجبار الكنترولر على فتح الصفحة الممررة فوراً لحل مشكلة التصفير
+    controller.currentIndex.value = initialIndex;
 
     // القائمة التي تحتوي على الشاشات
     final List<Widget> _screens = [
@@ -40,7 +47,7 @@ class MainLayoutScreen extends StatelessWidget {
             // 1. محتوى الصفحة الحالية (مراقب عبر Obx)
             Obx(() => _screens[controller.currentIndex.value]),
 
-            // ✅ 2. زر الرجوع الذكي (يظهر فقط إذا لم نكن في الرئيسية)
+            // 2. زر الرجوع الذكي (يختفي في الهوم ويظهر في البقية)
             Obx(() => controller.currentIndex.value != 0
                 ? Positioned(
               top: 50,
@@ -74,7 +81,7 @@ class MainLayoutScreen extends StatelessWidget {
     );
   }
 
-  // ويدجيت الزر الدائري (نفس تصميمك المعتمد)
+  // ويدجيت الزر الدائري
   Widget _buildCircleButton({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,

@@ -1,20 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:untitlednew2/core/theme/app_colors.dart';
-
 import 'package:untitlednew2/core/widgets/custom_button.dart';
+import 'package:untitlednew2/core/widgets/main_bottom_navbar.dart';
+import 'package:untitlednew2/features/main/logic/main_layout_controller.dart';
+import 'package:untitlednew2/core/controllers/auth_controller.dart';
+import 'package:untitlednew2/core/utils/guest_guard.dart';
+import 'package:untitlednew2/features/main/ui/screens/main_layout_screen.dart'; // استيراد الهيكل الرئيسي
+
 import '../../../../core/theme/ app_text_styles.dart';
 import '../../logic/location_filter_controller.dart';
+
 
 class LocationFilterScreen extends StatelessWidget {
   const LocationFilterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ✅ حقن الكنترولر
+    // حقن كنترولر الفلترة
     final LocationFilterController controller = Get.put(LocationFilterController());
 
+    // حقن كنترولر الـ Layout للتحكم في أزرار البار السفلي
+    final MainLayoutController mainLayoutController = Get.put(MainLayoutController());
+
     return Scaffold(
+      backgroundColor: AppColors.background,
+
+      // البار السفلي الموحد والمجمد تلقائياً للزوار عبر Obx
+      bottomNavigationBar: Obx(() {
+        final bool isLoggedIn = AuthController.to.isLoggedIn.value;
+
+        return MainBottomNavbar(
+          currentIndex: -1, // جعل التحديد -1 لكي لا تضيء أي أيقونة أثناء الفلترة
+          onTap: (index) {
+            if (index == 0) {
+              // الرئيسية: مسموح للجميع ونمرر التبويب 0
+              Get.offAll(() => const MainLayoutScreen(initialIndex: 0));
+            } else {
+              // التبويبات الأخرى محمية بالحارس (Guard) ونمرر التبويب المختار
+              guardAction(() {
+                Get.offAll(() => MainLayoutScreen(initialIndex: index));
+              });
+            }
+          },
+          onAddTap: () {
+            guardAction(() {
+              mainLayoutController.navigateToAddProperty();
+            });
+          },
+        );
+      }),
+
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -31,13 +67,20 @@ class LocationFilterScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // --- الهيدر: X يمين و AQAR يسار كما طلبت ---
+                  // --- الهيدر: X يمين و AQAR يسار ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // ✅ التعديل النهائي: عند الضغط على X نذهب للـ MainLayout (الهوم كزائر) حصراً
                       IconButton(
                         icon: const Icon(Icons.close, color: AppColors.darkNavy, size: 28),
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
+                                (route) => false, // مسح كل الصفحات والذهاب للهوم
+                          );
+                        },
                       ),
                       const Text(
                         'AQAR',
@@ -46,9 +89,9 @@ class LocationFilterScreen extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 50),
 
-                  // --- العنوان الموسط ---
+                  // العنوان الموسط
                   Text(
                     'حدد موقعك لسهولة\nالوصول للعقار',
                     textAlign: TextAlign.center,
@@ -57,10 +100,9 @@ class LocationFilterScreen extends StatelessWidget {
                   const SizedBox(height: 15),
                   Container(width: 50, height: 4, decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(10))),
 
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 40),
 
-                  // --- حقول الاختيار التفاعلية (Obx) ---
-
+                  // حقول الاختيار التفاعلية (Obx)
                   _buildLabel("البلد"),
                   Obx(() => _buildSelectBox(
                     value: controller.selectedCountry.value,
@@ -99,9 +141,9 @@ class LocationFilterScreen extends StatelessWidget {
                     );
                   }),
 
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 50),
 
-                  // --- زر التطبيق الموسط ---
+                  // زر تطبيق الموسط
                   Obx(() => CustomButton(
                     text: 'تطبيق',
                     backgroundColor: (controller.selectedGovernorate.value != null && controller.selectedArea.value != null)
@@ -111,7 +153,7 @@ class LocationFilterScreen extends StatelessWidget {
                         ? () => controller.applyFilter()
                         : null,
                   )),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -121,7 +163,7 @@ class LocationFilterScreen extends StatelessWidget {
     );
   }
 
-  // ويدجيت السيلكت الموحد والموسط (كما في كودك الأصلي)
+  // ويدجيت السيلكت الموحد والموسط
   Widget _buildSelectBox({required String? value, required List<String> items, required String hint, required Function(String?)? onChanged}) {
     return Container(
       width: double.infinity,
