@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:untitlednew2/core/theme/app_colors.dart';
-
 import '../../../../core/theme/ app_text_styles.dart';
 import '../../data/models/property_model.dart';
+// ✅ استيراد الحارس والكنترولر لحماية وتجميد العناصر
+import 'package:untitlednew2/core/controllers/auth_controller.dart';
+import 'package:untitlednew2/core/utils/guest_guard.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -139,19 +142,31 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ✅ تعديل أيقونة القلب لتصبح "مجمدة" للزوار ومحمية بالحارس
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      property.isFavorite = !property.isFavorite;
+                    // ✅ استخدام الحارس لمنع الزوار من التفضيل وإظهار التنبيه
+                    guardAction(() {
+                      setState(() {
+                        property.isFavorite = !property.isFavorite;
+                      });
                     });
                   },
-                  child: Icon(
-                    property.isFavorite
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    color: property.isFavorite ? Colors.red : AppColors.accent,
-                    size: 22,
-                  ),
+                  child: Obx(() {
+                    // فحص حالة الدخول بصرياً لتلوين القلب بالرمادي
+                    final bool isLoggedIn = AuthController.to.isLoggedIn.value;
+
+                    return Icon(
+                      property.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      // ✅ إذا لم يسجل دخوله، تظهر الأيقونة بلون رمادي باهت
+                      color: !isLoggedIn
+                          ? Colors.grey.shade400
+                          : (property.isFavorite ? Colors.red : AppColors.accent),
+                      size: 22,
+                    );
+                  }),
                 ),
                 const SizedBox(height: 10),
                 Text(

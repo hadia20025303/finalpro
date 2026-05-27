@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:untitlednew2/core/utils/app_validator.dart';
+// ✅ 1. استيراد الـ AuthController الجديد بدلاً من UserRepository
+import 'package:untitlednew2/core/controllers/auth_controller.dart';
 import '../ui/widgets/privacy_dialog.dart';
 import '../ui/screens/login_screen.dart';
 
@@ -90,6 +92,13 @@ class RegisterController extends GetxController {
       return;
     }
 
+    // ✅ 2. التعديل المطلوب: استدعاء الـ login من AuthController لتفعيل الحساب الجديد
+    // قمنا بأخذ الاسم والإيميل اللذين كتبهما المستخدم في الحقول وتخزينهما في النظام فوراً
+    AuthController.to.login(
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+    );
+
     // رسالة النجاح
     Get.snackbar(
       "نجاح",
@@ -99,7 +108,6 @@ class RegisterController extends GetxController {
     );
 
     // إظهار نافذة الخصوصية (نفس منطقك الأصلي)
-
     Get.dialog(const PrivacyDialog(), barrierDismissible: false);
   }
 

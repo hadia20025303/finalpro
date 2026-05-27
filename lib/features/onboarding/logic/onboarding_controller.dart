@@ -1,14 +1,16 @@
-//هذا الملف هو المسؤول عن قرار الانتقال للشاشة التالية
 import 'package:get/get.dart';
-import '../../auth/ui/screens/get_started_screen.dart';
+// ✅ استيراد الهيكل الرئيسي لكي يتمكن المستخدم من التصفح مباشرة
+import '../../main/ui/screens/main_layout_screen.dart';
 
 class OnboardingController extends GetxController {
 
-  // دالة الانتقال لواجهة البداية
-  void navigateToGetStarted() {
-    // Get.off تعمل مثل Navigator.pushReplacement (تحذف الصفحة الحالية من الذاكرة)
-    Get.off(() => const GetStartedScreen(),
-        transition: Transition.fadeIn, // إضافة أنميشن ناعم عند الانتقال
-        duration: const Duration(milliseconds: 800));
+  // ✅ دالة الانتقال مباشرة لواجهة التطبيق الرئيسية (التصفح كزائر)
+  void navigateToHome() {
+    // استخدمنا Get.off لكي لا يتمكن المستخدم من العودة لصفحة الترحيب مرة أخرى
+    Get.off(
+          () => const MainLayoutScreen(),
+      transition: Transition.fadeIn, // أنميشن ناعم واحترافي
+      duration: const Duration(milliseconds: 800),
+    );
   }
 }

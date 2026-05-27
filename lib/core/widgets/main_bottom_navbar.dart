@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import '../theme/app_colors.dart';
+// ✅ استيراد الـ AuthController لمعرفة حالة الدخول بصرياً
+import '../controllers/auth_controller.dart';
 
 class MainBottomNavbar extends StatelessWidget {
   final int currentIndex;
@@ -15,6 +18,9 @@ class MainBottomNavbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ فحص حالة الدخول الحالية
+    final bool isLoggedIn = AuthController.to.isLoggedIn.value;
+
     return Container(
       height: 80,
       decoration: BoxDecoration(
@@ -34,10 +40,10 @@ class MainBottomNavbar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavItem(Icons.person_outline, 3), // الملف الشخصي
-          _buildNavItem(Icons.chat_bubble_outline, 2), // الدردشة
+          _buildNavItem(Icons.person_outline, 3, isLoggedIn), // الملف الشخصي
+          _buildNavItem(Icons.chat_bubble_outline, 2, isLoggedIn), // الدردشة
 
-          // ✅ زر الزائد (+) في المنتصف تماماً كما في الصورة
+          // ✅ زر الزائد (+) في المنتصف (يتحول للرمادي إذا كان زائر)
           GestureDetector(
             onTap: onAddTap,
             child: Container(
@@ -45,21 +51,42 @@ class MainBottomNavbar extends StatelessWidget {
               height: 45,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.accent, width: 2),
+                // تلوين الحدود بالذهبي للمسجل، وبالرمادي للزائر
+                border: Border.all(
+                  color: isLoggedIn ? AppColors.accent : Colors.grey.shade300,
+                  width: 2,
+                ),
               ),
-              child: const Icon(Icons.add, color: AppColors.accent, size: 30),
+              child: Icon(
+                Icons.add,
+                // تلوين الزائد بالذهبي للمسجل، وبالرمادي للزائر
+                color: isLoggedIn ? AppColors.accent : Colors.grey.shade300,
+                size: 30,
+              ),
             ),
           ),
 
-          _buildNavItem(Icons.favorite_border, 1), // المفضلة
-          _buildNavItem(Icons.home_outlined, 0), // الرئيسية
+          _buildNavItem(Icons.favorite_border, 1, isLoggedIn), // المفضلة
+          _buildNavItem(Icons.home_outlined, 0, isLoggedIn), // الرئيسية
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, int index) {
+  // ✅ أضفنا متغير isLoggedIn للدالة لتحديد الألوان بدقة
+  Widget _buildNavItem(IconData icon, int index, bool isLoggedIn) {
     bool isSelected = currentIndex == index;
+
+    Color iconColor;
+
+    // إذا كان التبويب ليس "الرئيسية" (index 0) والمستخدم زائر ⬅️ اجعل اللون رمادي باهت
+    if (index != 0 && !isLoggedIn) {
+      iconColor = Colors.grey.shade300; // مجمد للزوار
+    } else {
+      // الألوان الطبيعية للمسجلين
+      iconColor = isSelected ? AppColors.accent : Colors.grey.shade400;
+    }
+
     return InkWell(
       onTap: () => onTap(index),
       child: Column(
@@ -67,12 +94,12 @@ class MainBottomNavbar extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: isSelected ? AppColors.accent : Colors.grey.shade400,
+            color: iconColor,
             size: 28,
           ),
           const SizedBox(height: 4),
-          // الخط الصغير أو النقطة تحت الأيقونة النشطة
-          if (isSelected)
+          // النقطة تحت الأيقونة النشطة (تظهر فقط إذا كان مسجلاً ومختاراً للتبويب)
+          if (isSelected && (index == 0 || isLoggedIn))
             Container(
               width: 4,
               height: 4,

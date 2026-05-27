@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // ✅ إضافة GetX
-import 'package:untitlednew2/core/theme/app_colors.dart';
+// lib/features/home/ui/screens/home_screen.dart
+// ✅ أيقونة القلب تعكس حالة الزائر عبر AuthController
 
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:untitlednew2/core/theme/app_colors.dart';
+import '../../../../core/controllers/auth_controller.dart';  // ✅
 import '../../../../core/theme/ app_text_styles.dart';
 import '../../data/models/property_repository.dart';
 import '../../logic/home_controller.dart';
@@ -17,7 +20,6 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ حقن الكنترولر وتمهيد البيانات بناءً على المنطقة المفلترة
     final HomeController controller = Get.put(HomeController());
     controller.initData(selectedArea);
 
@@ -47,41 +49,29 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               child: SingleChildScrollView(
-                controller: controller.scrollController, // ✅ ربط السكرول
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 30,
-                ),
+                controller: controller.scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                 child: Column(
                   children: [
                     _buildTopTabs(context),
                     const SizedBox(height: 20),
                     _buildFilterSection(context),
                     const SizedBox(height: 25),
-
-                    // ✅ استخدام Obx لمراقبة قائمة العقارات
                     Obx(
-                      () => controller.displayProperties.isEmpty
+                          () => controller.displayProperties.isEmpty
                           ? const Padding(
-                              padding: EdgeInsets.all(40.0),
-                              child: Text(
-                                "لا توجد عقارات في هذه المنطقة حالياً",
-                              ),
-                            )
+                        padding: EdgeInsets.all(40.0),
+                        child: Text("لا توجد عقارات في هذه المنطقة حالياً"),
+                      )
                           : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: controller.displayProperties.length,
-                              itemBuilder: (context, index) {
-                                final property =
-                                    controller.displayProperties[index];
-                                return _buildPropertyCard(
-                                  context,
-                                  property,
-                                  controller,
-                                );
-                              },
-                            ),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: controller.displayProperties.length,
+                        itemBuilder: (context, index) {
+                          final property = controller.displayProperties[index];
+                          return _buildPropertyCard(context, property, controller);
+                        },
+                      ),
                     ),
                     const SizedBox(height: 100),
                   ],
@@ -90,23 +80,18 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // ✅ زر العودة للأعلى (مراقب عبر Obx)
           Obx(
-            () => controller.showBackToTopButton.value
+                () => controller.showBackToTopButton.value
                 ? Positioned(
-                    bottom: 110,
-                    right: 20,
-                    child: FloatingActionButton(
-                      mini: true,
-                      backgroundColor: AppColors.accent,
-                      onPressed: () => controller.scrollToTop(),
-                      child: const Icon(
-                        Icons.keyboard_arrow_up,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                  )
+              bottom: 110,
+              right: 20,
+              child: FloatingActionButton(
+                mini: true,
+                backgroundColor: AppColors.accent,
+                onPressed: () => controller.scrollToTop(),
+                child: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 30),
+              ),
+            )
                 : const SizedBox.shrink(),
           ),
         ],
@@ -115,15 +100,14 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildPropertyCard(
-    BuildContext context,
-    dynamic property,
-    HomeController controller,
-  ) {
+      BuildContext context,
+      dynamic property,
+      HomeController controller,
+      ) {
     return InkWell(
       onTap: () {
-        Get.to(
-          () => PropertyDetailsScreen(property: property),
-        )?.then((value) => controller.displayProperties.refresh());
+        Get.to(() => PropertyDetailsScreen(property: property))
+            ?.then((value) => controller.displayProperties.refresh());
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -143,18 +127,20 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ✅ أيقونة القلب: رمادية للزائر، ملوّنة للمسجّل
                   GestureDetector(
-                    onTap: () => controller.toggleFavorite(
-                      property.id,
-                    ), // ✅ استدعاء الكنترولر
-                    child: Icon(
-                      property.isFavorite
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: property.isFavorite
-                          ? Colors.red
-                          : AppColors.accent,
-                    ),
+                    onTap: () => controller.toggleFavorite(property.id),
+                    child: Obx(() {
+                      final bool isLoggedIn = AuthController.to.isLoggedIn.value;
+                      return Icon(
+                        property.isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: !isLoggedIn
+                            ? Colors.grey.shade400          // زائر → رمادي
+                            : (property.isFavorite
+                            ? Colors.red                 // مسجّل + مفضّل
+                            : AppColors.accent),         // مسجّل + غير مفضّل
+                      );
+                    }),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -164,14 +150,10 @@ class HomeScreen extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                  Text(
-                    property.size,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  Text(
-                    property.area,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
+                  Text(property.size,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(property.area,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
@@ -205,22 +187,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // (بقية الـ Widgets المساعدة _buildTopTabs و _buildFilterSection تبقى كما هي مع تغيير Navigator لـ Get.to)
   Widget _buildTopTabs(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _tabButton(
-          "العقارات",
-          true,
-          () => Get.to(() => const PropertiesScreen()),
-        ),
+        _tabButton("العقارات", true, () => Get.to(() => const PropertiesScreen())),
         const SizedBox(width: 15),
-        _tabButton(
-          "الخدمات",
-          false,
-          () => Get.to(() => const ServicesScreen()),
-        ),
+        _tabButton("الخدمات", false, () => Get.to(() => const ServicesScreen())),
       ],
     );
   }

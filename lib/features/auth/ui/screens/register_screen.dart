@@ -26,7 +26,7 @@ class RegisterScreen extends StatelessWidget {
               height: MediaQuery.of(context).size.height * 0.35,
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('images/aqar.png'),
+                  image: AssetImage('images/aqar.jpeg'),
                   fit: BoxFit.cover,
                 ),
               ),

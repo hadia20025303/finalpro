@@ -70,7 +70,7 @@ class OnboardingScreen extends StatelessWidget {
                   // ✅ استخدام الكنترولر عند الضغط على الزر
                   CustomButton(
                     text: 'ابدأ الآن',
-                    onPressed: () => controller.navigateToGetStarted(),
+                    onPressed: () => controller.navigateToHome(),
                   ),
                   const SizedBox(height: 30),
                 ],

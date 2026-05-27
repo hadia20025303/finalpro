@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 class UserRepository extends GetxService {
   // ✅ جعل المتغيرات تفاعلية (.obs) لكي تشعر بها الواجهات فوراً
+  var isLoggedIn = false.obs;
   var name = "هادية عبد".obs;
   var email = "hadiaabd47@gmail.com".obs;
   var phone = "0983391340".obs;

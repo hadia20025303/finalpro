@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // ✅ إضافة GetX
+import 'package:get/get.dart';
 import 'package:untitlednew2/core/theme/app_colors.dart';
+import '../../../../core/utils/guest_guard.dart';              // ✅ جديد: حماية الزائر
+import '../../../../core/controllers/auth_controller.dart';    // ✅ جديد: معرفة حالة الدخول
 import '../../data/models/property_model.dart';
 import '../../logic/property_details_controller.dart';
 
@@ -11,7 +13,6 @@ class PropertyDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ حقن الكنترولر الخاص بالتفاصيل
     final PropertyDetailsController controller = Get.put(PropertyDetailsController());
 
     return Scaffold(
@@ -38,13 +39,13 @@ class PropertyDetailsScreen extends StatelessWidget {
     );
   }
 
-  // ✅ ويدجيت الصورة المركزية مع الأيقونات (مراقب عبر Obx)
+  // ✅ ويدجيت الصورة مع الأيقونات المحمية
   Widget _buildImageHeader(BuildContext context, PropertyDetailsController controller) {
     return Container(
       padding: const EdgeInsets.only(top: 50, left: 20, right: 20),
       child: Stack(
         children: [
-          // 1. الصورة في المنتصف
+          // 1. الصورة
           Align(
             alignment: Alignment.center,
             child: Container(
@@ -67,7 +68,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             ),
           ),
 
-          // 2. زر الرجوع (أعلى اليمين)
+          // 2. زر الرجوع (بدون حماية - مسموح للجميع)
           Positioned(
             top: 15,
             right: 15,
@@ -77,24 +78,31 @@ class PropertyDetailsScreen extends StatelessWidget {
             ),
           ),
 
-          // 3. أيقونات التحكم (أعلى اليسار) - مراقبة عبر Obx للتحديث اللحظي
+          // 3. أيقونات التحكم (محمية للزائرين)
           Positioned(
             top: 15,
             left: 15,
-            child: GetBuilder<PropertyDetailsController>( // نستخدم GetBuilder للمزامنة مع الـ Repository
+            child: GetBuilder<PropertyDetailsController>(
               builder: (_) => Row(
                 children: [
-                  // زر سلة المحذوفات
+                  // ✅ زر سلة المحذوفات - محمي
                   _buildHeaderIcon(
                     Icons.delete_outline,
-                    property.isFavorite ? () => controller.toggleFavorite(property) : () {},
+                    // استخدم guardAction لحماية الزائر
+                        () => guardAction(() {
+                      if (property.isFavorite) {
+                        controller.toggleFavorite(property);
+                      }
+                    }),
                     color: property.isFavorite ? Colors.red : Colors.grey,
                   ),
                   const SizedBox(width: 10),
-                  // زر القلب
+
+                  // ✅ زر القلب - محمي
                   _buildHeaderIcon(
                     property.isFavorite ? Icons.favorite : Icons.favorite_border,
-                        () => controller.toggleFavorite(property),
+                    // استخدم guardAction لحماية الزائر
+                        () => guardAction(() => controller.toggleFavorite(property)),
                     color: property.isFavorite ? Colors.red : Colors.white,
                   ),
                 ],
@@ -106,7 +114,7 @@ class PropertyDetailsScreen extends StatelessWidget {
     );
   }
 
-  // ويدجيت مساعد لبناء الأزرار الدائرية (نفس ستايلك تماماً)
+  // ويدجيت مساعد لبناء الأزرار الدائرية
   Widget _buildHeaderIcon(
       IconData icon,
       VoidCallback onTap, {

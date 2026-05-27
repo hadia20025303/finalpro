@@ -6,9 +6,13 @@ import 'package:untitlednew2/core/widgets/custom_button.dart';
 import 'package:untitlednew2/core/widgets/custom_text_field.dart';
 import 'package:untitlednew2/features/auth/ui/screens/forgot_password_screen.dart';
 import 'package:untitlednew2/features/onboarding/ui/screens/onboarding_screen.dart';
-import '../../../../core/theme/ app_text_styles.dart';
 
+import 'package:untitlednew2/features/main/ui/screens/main_layout_screen.dart'; // ✅ استيراد الهيكل الرئيسي للعودة إليه كزائر
+
+import '../../../../core/theme/ app_text_styles.dart';
 import '../../logic/profile_controller.dart';
+import 'package:untitlednew2/core/controllers/auth_controller.dart'; // ✅ استيراد AuthController
+import 'package:untitlednew2/features/profile/data/user_repository.dart'; // ✅ استيراد UserRepository
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -72,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           Obx(
-                            () => IconButton(
+                                () => IconButton(
                               icon: Icon(
                                 controller.isEditable.value
                                     ? Icons.check_circle
@@ -88,7 +92,7 @@ class ProfileScreen extends StatelessWidget {
 
                       // درع الحماية والحقول (مراقبة عبر Obx)
                       Obx(
-                        () => AbsorbPointer(
+                            () => AbsorbPointer(
                           absorbing: !controller.isEditable.value,
                           child: Column(
                             children: [
@@ -135,22 +139,30 @@ class ProfileScreen extends StatelessWidget {
 
                       // زر الحفظ (يظهر فقط عند التعديل)
                       Obx(
-                        () => controller.isEditable.value
+                            () => controller.isEditable.value
                             ? CustomButton(
-                                text: 'حفظ التغييرات',
-                                onPressed: () => controller.handleSave(),
-                              )
+                          text: 'حفظ التغييرات',
+                          onPressed: () => controller.handleSave(),
+                        )
                             : const SizedBox.shrink(),
                       ),
 
                       const SizedBox(height: 15),
 
-                      // زر تسجيل الخروج
+                      // ✅ زر تسجيل الخروج المطور (يمسح كل الحالات ويعود كزائر)
                       CustomButton(
                         text: 'تسجيل الخروج',
                         backgroundColor: AppColors.primary.withOpacity(0.7),
-                        onPressed: () =>
-                            Get.offAll(() => const OnboardingScreen()),
+                        onPressed: () {
+                          // 1. تصفير حالة الدخول في الـ AuthController
+                          AuthController.to.logout();
+
+                          // 2. تصفير البيانات داخل الـ UserRepository لكي لا تعلق في الذاكرة
+                          Get.find<UserRepository>().clearUserData();
+
+                          // 3. العودة للهيكل الرئيسي كزائر نظيف ومجمد الحساب
+                          Get.offAll(() => const MainLayoutScreen());
+                        },
                       ),
                       const SizedBox(height: 70),
                     ],
