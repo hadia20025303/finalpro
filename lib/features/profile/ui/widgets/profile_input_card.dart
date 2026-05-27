@@ -6,6 +6,7 @@ class ProfileInputCard extends StatelessWidget {
   final IconData icon;
   final TextEditingController controller;
   final TextInputType keyboardType;
+  final bool enabled; // ✅ أضفنا هذه الخاصية للتحكم عبر GetX
 
   const ProfileInputCard({
     super.key,
@@ -13,6 +14,7 @@ class ProfileInputCard extends StatelessWidget {
     required this.icon,
     required this.controller,
     this.keyboardType = TextInputType.text,
+    this.enabled = true, // ✅ القيمة الافتراضية هي مفعل
   });
 
   @override
@@ -33,7 +35,12 @@ class ProfileInputCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.accent, size: 22),
+          // ✅ تغيير لون الأيقونة بناءً على حالة التفعيل
+          Icon(
+              icon,
+              color: enabled ? AppColors.accent : Colors.grey.shade400,
+              size: 22
+          ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
@@ -45,11 +52,13 @@ class ProfileInputCard extends StatelessWidget {
                 ),
                 TextField(
                   controller: controller,
+                  enabled: enabled, // ✅ ربط خاصية التفعيل بالـ TextField
                   keyboardType: keyboardType,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.darkNavy,
+                    // ✅ تغيير لون النص عند القفل ليعطي انطباع الـ Read-only
+                    color: enabled ? AppColors.darkNavy : Colors.grey,
                   ),
                   decoration: const InputDecoration(
                     isDense: true,

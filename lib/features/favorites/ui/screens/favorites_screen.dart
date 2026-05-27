@@ -1,60 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:untitlednew2/core/theme/app_colors.dart';
 import '../../../../core/theme/ app_text_styles.dart';
-import '../../../home/data/models/property_repository.dart';
 import '../../../home/ui/screens/property_details_screen.dart';
+import '../../logic/favorites_controller.dart';
 
-class FavoritesScreen extends StatefulWidget {
+class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
 
   @override
-  State<FavoritesScreen> createState() => _FavoritesScreenState();
-}
-
-class _FavoritesScreenState extends State<FavoritesScreen> {
-  final PropertyRepository _repo = PropertyRepository();
-  final ScrollController _scrollController = ScrollController();
-  bool _showBackToTopButton = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 200) {
-        if (!_showBackToTopButton) setState(() => _showBackToTopButton = true);
-      } else {
-        if (_showBackToTopButton) setState(() => _showBackToTopButton = false);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(0, duration: const Duration(milliseconds: 600), curve: Curves.easeInOut);
-  }
-
-  void _removeFromFavorites(String id) {
-    setState(() {
-      _repo.toggleFavorite(id);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("تمت إزالة العقار من المفضلة", textAlign: TextAlign.right),
-        backgroundColor: Colors.redAccent,
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // جلب قائمة المفضلات الحالية من المخزن
-    final favList = _repo.getFavoriteProperties();
+    // ✅ حقن الكنترولر
+    final FavoritesController controller = Get.put(FavoritesController());
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -95,37 +52,36 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ),
                     ),
                     const SizedBox(height: 5),
-                    Text('لديك (${favList.length}) عقارات في المفضلة', style: AppTextStyles.font14GreyRegular),
+
+                    // ✅ مراقبة العدد
+                    Obx(() => Text(
+                        'لديك (${controller.favList.length}) عقارات في المفضلة',
+                        style: AppTextStyles.font14GreyRegular
+                    )),
+
                     const SizedBox(height: 20),
                     const Divider(indent: 50, endIndent: 50, thickness: 1),
 
-                    // القائمة القابلة للنقر والتمرير
+                    // ✅ مراقبة القائمة القابلة للنقر والتمرير
                     Expanded(
-                      child: favList.isEmpty
+                      child: Obx(() => controller.favList.isEmpty
                           ? _buildEmptyState()
                           : ListView.builder(
-                        controller: _scrollController,
+                        controller: controller.scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        itemCount: favList.length,
+                        itemCount: controller.favList.length,
                         itemBuilder: (context, index) {
-                          final property = favList[index];
-                          // ✅ إضافة InkWell لجعل المنشور قابلاً للنقر
+                          final property = controller.favList[index];
                           return InkWell(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => PropertyDetailsScreen(property: property),
-                                ),
-                              ).then((value) {
-                                // ✅ تحديث الصفحة عند العودة لضمان اختفاء العقار إذا أزاله المستخدم من "التفاصيل"
-                                setState(() {});
-                              });
+                              // الانتقال عبر Get.to وتحديث المفضلات عند العودة
+                              Get.to(() => PropertyDetailsScreen(property: property))
+                                  ?.then((value) => controller.loadFavorites());
                             },
-                            child: _buildFavoriteCard(property),
+                            child: _buildFavoriteCard(property, controller),
                           );
                         },
-                      ),
+                      )),
                     ),
                     const SizedBox(height: 80),
                   ],
@@ -133,18 +89,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               ),
             ),
 
-            // زر العودة للأعلى
-            if (_showBackToTopButton)
-              Positioned(
-                bottom: 110,
-                right: 20,
-                child: FloatingActionButton(
-                  mini: true,
-                  backgroundColor: AppColors.accent,
-                  onPressed: _scrollToTop,
-                  child: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 30),
-                ),
+            // ✅ مراقبة زر العودة للأعلى
+            Obx(() => controller.showBackToTopButton.value
+                ? Positioned(
+              bottom: 110,
+              right: 20,
+              child: FloatingActionButton(
+                mini: true,
+                backgroundColor: AppColors.accent,
+                onPressed: controller.scrollToTop,
+                child: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 30),
               ),
+            )
+                : const SizedBox.shrink()),
           ],
         ),
       ),
@@ -162,7 +119,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildFavoriteCard(dynamic property) {
+  Widget _buildFavoriteCard(dynamic property, FavoritesController controller) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(12),
@@ -184,7 +141,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     const Icon(Icons.favorite, color: Colors.red, size: 22),
                     const SizedBox(width: 15),
                     GestureDetector(
-                      onTap: () => _removeFromFavorites(property.id),
+                      onTap: () => controller.removeFromFavorites(property.id), // ✅ استدعاء الكنترولر
                       child: Icon(Icons.delete_outline, color: Colors.grey.shade400, size: 22),
                     ),
                   ],

@@ -1,13 +1,13 @@
-import '../models/property_model.dart';
+import 'package:get/get.dart';
+import 'property_model.dart';
 
 class PropertyRepository {
-  // ✅ جعل المخزن "Single Instance" لكي لا تتغير البيانات عند التنقل
   static final PropertyRepository _instance = PropertyRepository._internal();
   factory PropertyRepository() => _instance;
   PropertyRepository._internal();
 
-  // القائمة الرئيسية للعقارات
-  final List<PropertyModel> allProperties = [
+  // ✅ القائمة أصبحت RxList لكي يراقبها GetX في كل التطبيق
+  var allProperties = <PropertyModel>[
     PropertyModel(
       id: "1",
       title: "فيلا المزة",
@@ -32,18 +32,17 @@ class PropertyRepository {
       price: "300M",
       imageUrl: "images/aqar.jpeg",
     ),
-  ];
+  ].obs;
 
-  // دالة لجلب المفضلات فقط
   List<PropertyModel> getFavoriteProperties() {
     return allProperties.where((p) => p.isFavorite).toList();
   }
 
-  // دالة لتبديل حالة المفضلة
   void toggleFavorite(String id) {
     final index = allProperties.indexWhere((p) => p.id == id);
     if (index != -1) {
       allProperties[index].isFavorite = !allProperties[index].isFavorite;
+      allProperties.refresh(); // ✅ إجبار كل من يراقب القائمة على التحديث
     }
   }
 }

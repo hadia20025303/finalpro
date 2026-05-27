@@ -1,67 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:untitlednew2/core/theme/app_colors.dart';
 
 import '../../../../core/theme/ app_text_styles.dart';
 import '../../data/models/property_repository.dart';
+import '../../logic/home_controller.dart';
+
 import 'services_screen.dart';
 import 'properties_screen.dart';
 import 'location_filter_screen.dart';
-import 'property_details_screen.dart'; // ✅ إضافة استيراد واجهة التفاصيل
+import 'property_details_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  final String? selectedArea; // ✅ إضافة استقبال المنطقة المختارة
+class HomeScreen extends StatelessWidget {
+  final String? selectedArea;
   const HomeScreen({super.key, this.selectedArea});
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final PropertyRepository _repo = PropertyRepository();
-  final ScrollController _scrollController = ScrollController();
-  bool _showBackToTopButton = false;
-
-  // ✅ قائمة العقارات التي سيتم عرضها (بعد الفلترة أو الكل)
-  late List<dynamic> _displayProperties;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // ✅ منطق الفلترة المبدئي:
-    // إذا كانت هناك منطقة مختارة، نقوم بتصفية القائمة، وإلا نعرض كل العقارات
-    if (widget.selectedArea != null) {
-      _displayProperties = _repo.allProperties
-          .where((p) => p.area.contains(widget.selectedArea!))
-          .toList();
-    } else {
-      _displayProperties = _repo.allProperties;
-    }
-
-    _scrollController.addListener(() {
-      if (mounted)
-        setState(() => _showBackToTopButton = _scrollController.offset > 300);
-    });
-  }
-
-  void _toggleFavorite(String id) {
-    setState(() {
-      _repo.toggleFavorite(id);
-    });
-    final isFav = _repo.allProperties.firstWhere((p) => p.id == id).isFavorite;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isFav ? "تمت الإضافة إلى المفضلة ❤️" : "تمت الإزالة من المفضلة",
-          textAlign: TextAlign.right,
-        ),
-        backgroundColor: isFav ? Colors.green : Colors.redAccent,
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ حقن الكنترولر وتمهيد البيانات بناءً على المنطقة المفلترة
+    final HomeController controller = Get.put(HomeController());
+    controller.initData(selectedArea);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -88,32 +47,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                controller: _scrollController,
+                controller: controller.scrollController, // ✅ ربط السكرول
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 30,
                 ),
                 child: Column(
                   children: [
-                    _buildTopTabs(),
+                    _buildTopTabs(context),
                     const SizedBox(height: 20),
-                    _buildFilterSection(),
+                    _buildFilterSection(context),
                     const SizedBox(height: 25),
 
-                    // ✅ تم تحديث الـ ListView لاستخدام القائمة المفلترة _displayProperties
-                    _displayProperties.isEmpty
-                        ? const Padding(
-                      padding: EdgeInsets.all(40.0),
-                      child: Text("لا توجد عقارات في هذه المنطقة حالياً"),
-                    )
-                        : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _displayProperties.length,
-                      itemBuilder: (context, index) {
-                        final property = _displayProperties[index];
-                        return _buildPropertyCard(property);
-                      },
+                    // ✅ استخدام Obx لمراقبة قائمة العقارات
+                    Obx(
+                      () => controller.displayProperties.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(40.0),
+                              child: Text(
+                                "لا توجد عقارات في هذه المنطقة حالياً",
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: controller.displayProperties.length,
+                              itemBuilder: (context, index) {
+                                final property =
+                                    controller.displayProperties[index];
+                                return _buildPropertyCard(
+                                  context,
+                                  property,
+                                  controller,
+                                );
+                              },
+                            ),
                     ),
                     const SizedBox(height: 100),
                   ],
@@ -121,42 +89,41 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          if (_showBackToTopButton)
-            Positioned(
-              bottom: 110,
-              right: 20,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: AppColors.accent,
-                onPressed: () => _scrollController.animateTo(
-                  0,
-                  duration: const Duration(milliseconds: 600),
-                  curve: Curves.easeInOut,
-                ),
-                child: const Icon(
-                  Icons.keyboard_arrow_up,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-            ),
+
+          // ✅ زر العودة للأعلى (مراقب عبر Obx)
+          Obx(
+            () => controller.showBackToTopButton.value
+                ? Positioned(
+                    bottom: 110,
+                    right: 20,
+                    child: FloatingActionButton(
+                      mini: true,
+                      backgroundColor: AppColors.accent,
+                      onPressed: () => controller.scrollToTop(),
+                      child: const Icon(
+                        Icons.keyboard_arrow_up,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
   }
 
-  // ✅ ربط الانتقال لصفحة التفاصيل
-  Widget _buildPropertyCard(dynamic property) {
+  Widget _buildPropertyCard(
+    BuildContext context,
+    dynamic property,
+    HomeController controller,
+  ) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PropertyDetailsScreen(property: property),
-          ),
-        ).then(
-              (value) => setState(() {}),
-        );
+        Get.to(
+          () => PropertyDetailsScreen(property: property),
+        )?.then((value) => controller.displayProperties.refresh());
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -177,7 +144,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => _toggleFavorite(property.id),
+                    onTap: () => controller.toggleFavorite(
+                      property.id,
+                    ), // ✅ استدعاء الكنترولر
                     child: Icon(
                       property.isFavorite
                           ? Icons.favorite
@@ -236,26 +205,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopTabs() {
+  // (بقية الـ Widgets المساعدة _buildTopTabs و _buildFilterSection تبقى كما هي مع تغيير Navigator لـ Get.to)
+  Widget _buildTopTabs(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _tabButton(
           "العقارات",
           true,
-              () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PropertiesScreen()),
-          ),
+          () => Get.to(() => const PropertiesScreen()),
         ),
         const SizedBox(width: 15),
         _tabButton(
           "الخدمات",
           false,
-              () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ServicesScreen()),
-          ),
+          () => Get.to(() => const ServicesScreen()),
         ),
       ],
     );
@@ -282,12 +246,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFilterSection() {
+  Widget _buildFilterSection(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LocationFilterScreen()),
-      ),
+      onTap: () => Get.to(() => const LocationFilterScreen()),
       child: Column(
         children: [
           Row(

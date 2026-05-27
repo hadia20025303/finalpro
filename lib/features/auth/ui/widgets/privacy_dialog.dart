@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:untitlednew2/core/theme/app_colors.dart';
-
 import 'package:untitlednew2/core/widgets/custom_button.dart';
-// استورد واجهة الفلترة هنا لاحقاً
-// import '../../home/ui/screens/filter_screen.dart';
 import '../../../../core/theme/ app_text_styles.dart';
-import '../../../home/ui/screens/location_filter_screen.dart';
 
-class PrivacyDialog extends StatefulWidget {
+// استيراد الكنترولر الذي أنشأناه
+import '../../logic/privacy_controller.dart';
+
+
+class PrivacyDialog extends StatelessWidget {
   const PrivacyDialog({super.key});
 
   @override
-  State<PrivacyDialog> createState() => _PrivacyDialogState();
-}
-
-class _PrivacyDialogState extends State<PrivacyDialog> {
-  bool _isAccepted = false;
-
-  @override
   Widget build(BuildContext context) {
+    // ✅ حقن الكنترولر
+    final PrivacyController controller = Get.put(PrivacyController());
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
@@ -39,8 +36,7 @@ class _PrivacyDialogState extends State<PrivacyDialog> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.grey),
-                    onPressed: () =>
-                        Navigator.pop(context), // العودة للخطوة السابقة
+                    onPressed: () => controller.closeDialog(), // ✅ استخدام Get.back
                   ),
                 ],
               ),
@@ -72,16 +68,14 @@ class _PrivacyDialogState extends State<PrivacyDialog> {
 
               const SizedBox(height: 20),
 
-              // مربع الموافقة
+              // مربع الموافقة (مغلف بـ Obx لمراقبة التغيرات)
               Row(
                 children: [
-                  Checkbox(
-                    value: _isAccepted,
+                  Obx(() => Checkbox(
+                    value: controller.isAccepted.value,
                     activeColor: AppColors.accent,
-                    onChanged: (val) {
-                      setState(() => _isAccepted = val!);
-                    },
-                  ),
+                    onChanged: (val) => controller.toggleAcceptance(val), // ✅ تحديث الحالة
+                  )),
                   const Expanded(
                     child: Text(
                       'أوافق على كافة الشروط والأحكام',
@@ -96,24 +90,14 @@ class _PrivacyDialogState extends State<PrivacyDialog> {
 
               const SizedBox(height: 20),
 
-              // زر المتابعة
-              CustomButton(
+              // زر المتابعة (يتغير لونه وحالته بناءً على Obx)
+              Obx(() => CustomButton(
                 text: 'استمرار',
-                backgroundColor: _isAccepted ? AppColors.primary : Colors.grey,
-                onPressed: _isAccepted
-                    ? () {
-                        Navigator.pop(context); // إغلاق النافذة
-                        // ✅ الانتقال لواجهة الفلترة (التي سأرسلها لك)
-                       // print("الانتقال لواجهة الفلترة...");
-                        // Navigator.push(context, MaterialPageRoute(builder: (_) => const FilterScreen()));
-                        Navigator.pop(context); // إغلاق النافذة
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LocationFilterScreen())
-                        );
-                      }
+                backgroundColor: controller.isAccepted.value ? AppColors.primary : Colors.grey,
+                onPressed: controller.isAccepted.value
+                    ? () => controller.continueToFilter() // ✅ ينفذ الانتقال
                     : null, // الزر معطل إذا لم يوافق
-              ),
+              )),
             ],
           ),
         ),

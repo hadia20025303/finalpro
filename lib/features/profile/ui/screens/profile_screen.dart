@@ -1,109 +1,30 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ إضافة GetX
 import 'package:image_picker/image_picker.dart';
 import 'package:untitlednew2/core/theme/app_colors.dart';
-import 'package:untitlednew2/core/utils/app_validator.dart';
 import 'package:untitlednew2/core/widgets/custom_button.dart';
 import 'package:untitlednew2/core/widgets/custom_text_field.dart';
 import 'package:untitlednew2/features/auth/ui/screens/forgot_password_screen.dart';
 import 'package:untitlednew2/features/onboarding/ui/screens/onboarding_screen.dart';
-
 import '../../../../core/theme/ app_text_styles.dart';
-import '../../data/user_repository.dart';
 
-class ProfileScreen extends StatefulWidget {
+import '../../logic/profile_controller.dart';
+
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  // ✅ استدعاء مخزن البيانات
-  final UserRepository _userRepo = UserRepository();
-
-  bool _isEditable = false;
-  File? _imageFile;
-  final ImagePicker _picker = ImagePicker();
-
-  // ✅ تعريف المتحكمات بدون قيم افتراضية هنا
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-
-  @override
-  void initState() {
-    super.initState();
-    // ✅ تحميل البيانات من المخزن عند فتح الصفحة
-    _nameController = TextEditingController(text: _userRepo.name);
-    _emailController = TextEditingController(text: _userRepo.email);
-    _phoneController = TextEditingController(text: _userRepo.phone);
-    _imageFile = _userRepo.imageFile;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        imageQuality: 50,
-      );
-      if (pickedFile != null) {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      _showSnackBar("حدث خطأ أثناء اختيار الصورة");
-    }
-  }
-
-  void _handleSave() {
-    String? nameErr = AppValidator.validateName(_nameController.text);
-    String? emailErr = AppValidator.validateEmail(_emailController.text);
-    String? phoneErr = AppValidator.validatePhone(_phoneController.text);
-
-    if (nameErr != null || emailErr != null || phoneErr != null) {
-      _showSnackBar(nameErr ?? emailErr ?? phoneErr!);
-      return;
-    }
-
-    // ✅ حفظ البيانات الجديدة في المخزن لكي لا تضيع
-    _userRepo.updateUserData(
-      newName: _nameController.text,
-      newEmail: _emailController.text,
-      newPhone: _phoneController.text,
-      newImage: _imageFile,
-    );
-
-    setState(() => _isEditable = false);
-    _showSnackBar("تم حفظ التعديلات بنجاح", isSuccess: true);
-  }
-
-  void _showSnackBar(String message, {bool isSuccess = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, textAlign: TextAlign.right),
-        backgroundColor: isSuccess ? Colors.green : Colors.redAccent,
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // ✅ حقن الكنترولر
+    final ProfileController controller = Get.put(ProfileController());
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: Stack(
           children: [
+            // الطبقة 1: صورة الخلفية
             Container(
               height: MediaQuery.of(context).size.height * 0.4,
               decoration: const BoxDecoration(
@@ -114,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
+            // الطبقة 3: الكرت الأبيض المنحني والمحتوى
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -133,8 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildProfileAvatar(),
+                      // صورة الأفاتار (مراقبة عبر Obx)
+                      Obx(() => _buildProfileAvatar(controller)),
+
                       const SizedBox(height: 15),
+
+                      // العنوان مع أيقونة التعديل (مراقب عبر Obx)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -145,61 +71,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               fontSize: 30,
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(
-                              _isEditable ? Icons.check_circle : Icons.edit,
-                              color: AppColors.accent,
+                          Obx(
+                            () => IconButton(
+                              icon: Icon(
+                                controller.isEditable.value
+                                    ? Icons.check_circle
+                                    : Icons.edit,
+                                color: AppColors.accent,
+                              ),
+                              onPressed: () => controller.toggleEdit(),
                             ),
-                            onPressed: () {
-                              if (_isEditable) {
-                                _handleSave(); // حفظ عند الضغط على علامة الصح
-                              } else {
-                                setState(() => _isEditable = true);
-                              }
-                            },
                           ),
                         ],
                       ),
                       const SizedBox(height: 30),
 
-                      AbsorbPointer(
-                        absorbing: !_isEditable,
-                        child: Column(
-                          children: [
-                            CustomTextField(
-                              hintText: 'الاسم الكامل',
-                              icon: Icons.person_outline,
-                              controller: _nameController,
-                              enabled: _isEditable,
-                            ),
-                            CustomTextField(
-                              hintText: 'البريد الإلكتروني',
-                              icon: Icons.email_outlined,
-                              controller: _emailController,
-                              enabled: _isEditable,
-                              keyboardType: TextInputType.emailAddress,
-                            ),
-                            CustomTextField(
-                              hintText: 'رقم الهاتف',
-                              icon: Icons.phone_android,
-                              controller: _phoneController,
-                              enabled: _isEditable,
-                              keyboardType: TextInputType.phone,
-                            ),
-                          ],
+                      // درع الحماية والحقول (مراقبة عبر Obx)
+                      Obx(
+                        () => AbsorbPointer(
+                          absorbing: !controller.isEditable.value,
+                          child: Column(
+                            children: [
+                              CustomTextField(
+                                hintText: 'الاسم الكامل',
+                                icon: Icons.person_outline,
+                                controller: controller.nameController,
+                                enabled: controller.isEditable.value,
+                              ),
+                              CustomTextField(
+                                hintText: 'البريد الإلكتروني',
+                                icon: Icons.email_outlined,
+                                controller: controller.emailController,
+                                enabled: controller.isEditable.value,
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              CustomTextField(
+                                hintText: 'رقم الهاتف',
+                                icon: Icons.phone_android,
+                                controller: controller.phoneController,
+                                enabled: controller.isEditable.value,
+                                keyboardType: TextInputType.phone,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const ForgotPasswordScreen(),
-                            ),
-                          ),
+                          onPressed: () =>
+                              Get.to(() => const ForgotPasswordScreen()),
                           child: const Text(
                             'تغيير كلمة المرور؟',
                             style: TextStyle(
@@ -211,23 +133,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 25),
 
-                      if (_isEditable)
-                        CustomButton(
-                          text: 'حفظ التغييرات',
-                          onPressed: _handleSave,
-                        ),
+                      // زر الحفظ (يظهر فقط عند التعديل)
+                      Obx(
+                        () => controller.isEditable.value
+                            ? CustomButton(
+                                text: 'حفظ التغييرات',
+                                onPressed: () => controller.handleSave(),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
 
                       const SizedBox(height: 15),
+
+                      // زر تسجيل الخروج
                       CustomButton(
                         text: 'تسجيل الخروج',
                         backgroundColor: AppColors.primary.withOpacity(0.7),
-                        onPressed: () => Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const OnboardingScreen(),
-                          ),
-                          (route) => false,
-                        ),
+                        onPressed: () =>
+                            Get.offAll(() => const OnboardingScreen()),
                       ),
                       const SizedBox(height: 70),
                     ],
@@ -241,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileAvatar() {
+  Widget _buildProfileAvatar(ProfileController controller) {
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -258,13 +181,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: CircleAvatar(
             backgroundColor: const Color(0xFFFFD1E8),
-            backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
-            child: _imageFile == null
+            backgroundImage: controller.tempImageFile.value != null
+                ? FileImage(controller.tempImageFile.value!)
+                : null,
+            child: controller.tempImageFile.value == null
                 ? const Icon(Icons.person, size: 80, color: Colors.grey)
                 : null,
           ),
         ),
-        if (_isEditable)
+        if (controller.isEditable.value)
           Positioned(
             bottom: 5,
             left: 5,
@@ -274,8 +199,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               onSelected: (value) => value == 1
-                  ? _pickImage(ImageSource.camera)
-                  : _pickImage(ImageSource.gallery),
+                  ? controller.pickImage(ImageSource.camera)
+                  : controller.pickImage(ImageSource.gallery),
               child: CircleAvatar(
                 backgroundColor: AppColors.accent,
                 radius: 18,
